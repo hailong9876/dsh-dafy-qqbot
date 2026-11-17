@@ -4037,27 +4037,64 @@ function vidCleanComment(t){
 }
 // 把 JSON 里抠出的字符串还原转义（\" \\ 之类）
 const vidJsonStr=(s)=>{ try{ return JSON.parse('"'+String(s)+'"'); }catch(e){ return String(s); } };
-function vidParseJudge(txt){
-  const s=String(txt||'').trim();
-  // 1) 标准 JSON
-  const m=s.match(/\{[\s\S]*\}/);
-  if(m){
-    try{
-      const o=JSON.parse(m[0]);
-      if(o && (typeof o.skip!=='undefined' || typeof o.comment!=='undefined')){
-        return {
-          skip:!!o.skip,
-          reason:String(o.reason||'').slice(0,20),
-          comment:o.skip?'':vidCleanComment(o.comment),
-          parsed:true
-        };
+// 从一段文本里抠出所有「括号配对」的 JSON 对象（容忍前后有解释文字、代码块、多个候选）
+function vidJsonObjects(s){
+  const out=[];
+  let i=0;
+  while(i<s.length){
+    if(s[i]!=='{'){ i++; continue; }
+    const start=i;
+    let depth=0, inStr=false, esc=false, closed=false;
+    for(let j=i;j<s.length;j++){
+      const c=s[j];
+      if(inStr){
+        if(esc) esc=false;
+        else if(c==='\\') esc=true;
+        else if(c==='"') inStr=false;
+        continue;
       }
-    }catch(e){}
+      if(c==='"'){ inStr=true; continue; }
+      if(c==='{') depth++;
+      else if(c==='}'){
+        depth--;
+        if(depth===0){ out.push(s.slice(start,j+1)); i=j+1; closed=true; break; }
+      }
+    }
+    if(!closed) break;   // 后面都被截断了，不再找
   }
-  // 2) C2 宽松解析：输出被截断 / 包了 markdown 时，直接抠字段
-  const skipM=s.match(/"skip"\s*:\s*(true|false)/i);
-  const reasonM=s.match(/"reason"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-  const commentM=s.match(/"comment"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  return out;
+}
+function vidParseJudge(txt){
+  let s=String(txt||'').replace(/^\uFEFF/,'').trim();
+  if(!s) return {skip:false, reason:'', comment:'', parsed:false, raw:''};
+  // 去掉 ```json 围栏，避免围栏里的示例干扰
+  s=s.replace(/```[a-zA-Z]*/g,'').trim();
+  const pick=(text)=>{
+    const cands=vidJsonObjects(text);
+    // 从后往前试：模型常先复述提示里的示例 JSON，真正的答案是最后一个
+    for(let i=cands.length-1;i>=0;i--){
+      try{
+        const o=JSON.parse(cands[i]);
+        if(o && typeof o==='object' && (typeof o.skip!=='undefined' || typeof o.comment!=='undefined')){
+          return {
+            skip:!!o.skip,
+            reason:String(o.reason||'').slice(0,20),
+            comment:o.skip?'':vidCleanComment(o.comment),
+            parsed:true
+          };
+        }
+      }catch(e){}
+    }
+    return null;
+  };
+  // 1) 标准 JSON（先原文，再把中文引号换成英文引号试一次）
+  const hit=pick(s) || pick(s.replace(/[\u201c\u201d]/g,'"'));
+  if(hit) return hit;
+  // 2) 宽松解析：输出被截断 / 键名没引号 / 全角冒号 / 中文引号时直接抠字段
+  const Q='["\'\\u201c\\u201d]?';
+  const skipM=s.match(new RegExp(Q+'skip'+Q+'\\s*[:：]\\s*(true|false)','i'));
+  const reasonM=s.match(new RegExp(Q+'reason'+Q+'\\s*[:：]\\s*["\'\\u201c]([^"\'\\u201d\\n]*)','i'));
+  const commentM=s.match(new RegExp(Q+'comment'+Q+'\\s*[:：]\\s*["\'\\u201c]([^"\'\\u201d\\n]*)','i'));
   if(skipM||reasonM||commentM){
     const skip=skipM?/true/i.test(skipM[1]):false;
     return {
@@ -4067,7 +4104,7 @@ function vidParseJudge(txt){
       parsed:true, loose:true
     };
   }
-  return {skip:false, reason:'', comment:'', parsed:false};
+  return {skip:false, reason:'', comment:'', parsed:false, raw:s.replace(/\s+/g,' ').slice(0,120)};
 }
 async function vidWriteComment(v,signal){
   const c=aiConf();
@@ -4091,34 +4128,42 @@ skip 为 false 时，comment 写一条 20 字内的口语化短评：像真人�
     model:model,
     messages:[{role:'system',content:PERSONA},{role:'user',content:prompt}],
     stream:false,
-    max_tokens:600,
+    max_tokens:1200,   // 推理型模型会先写思考过程，太小的额度会把 JSON 截断
     temperature:0.7,
     response_format:{type:'json_object'},
     think:c.mode==='oll'?false:undefined
   };
-  let r=await fetch(url,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-    body:JSON.stringify(body),
-    signal
-  });
-  // C2 兜底：部分模型/网关不支持 response_format，被拒时去掉它重试一次
-  if(!r.ok && (r.status===400||r.status===422)){
-    delete body.response_format;
-    r=await fetch(url,{
+  // 发一次请求并取回回答文本；不支持 response_format 的模型自动去掉后重试
+  const ask=async(b)=>{
+    const send=(bb)=>fetch(url,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify(body),
+      body:JSON.stringify(bb),
       signal
     });
-  }
-  if(!r.ok) throw new Error('AI 接口 HTTP '+r.status);
-  const j=await r.json();
-  const txt=(j.choices&&j.choices[0]&&(j.choices[0].message.content||j.choices[0].message.reasoning_content))||'';
-  const judge=vidParseJudge(txt);
+    let r=await send(b);
+    if(!r.ok && (r.status===400||r.status===422) && b.response_format){
+      const nb={...b};
+      delete nb.response_format;
+      r=await send(nb);
+    }
+    if(!r.ok) throw new Error('AI 接口 HTTP '+r.status);
+    const j=await r.json();
+    const msg=(j.choices&&j.choices[0]&&j.choices[0].message)||{};
+    return String(msg.content||'').trim()||String(msg.reasoning_content||'');
+  };
+  let judge=vidParseJudge(await ask(body));
   if(!judge.parsed){
-    // C1：模型没按 JSON 输出就不发布，绝不把原始输出当评论贴出去
-    vidLog('AI 没按 JSON 格式回答，本条不发布',true);
+    // 第一次没按格式来：压低温度、明确要求「只要一行 JSON」再问一次
+    const retry={...body, temperature:0.2, messages:[
+      {role:'system',content:PERSONA},
+      {role:'user',content:prompt+'\n\n注意：上一轮你输出的不是合法 JSON。这次只输出一行 JSON，形如 {"skip":false,"reason":"12字内理由","comment":"20字内短评"}，不要思考过程、不要代码块、不要任何解释。'}
+    ]};
+    judge=vidParseJudge(await ask(retry).catch(()=> ''));
+  }
+  if(!judge.parsed){
+    // 两次都没按 JSON 输出：不把原始输出当评论贴出去，但把原文片段打出来方便排查
+    vidLog('AI 没按 JSON 格式回答，本条不发布'+(judge.raw?'（原始输出：'+judge.raw+'）':''),true);
     return {skip:false, reason:'', comment:'', parseFail:true};
   }
   return judge;
