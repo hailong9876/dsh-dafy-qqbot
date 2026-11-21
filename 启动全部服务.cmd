@@ -7,14 +7,14 @@ echo root : %cd%
 echo.
 
 REM ---- 1. Clean bridge 18902 zombie ONLY ----
-REM keep_alive self-probes 18900 18903 18904 and skips if alive, do NOT touch them
+REM supervisor self-probes 18900 18903 18904 and skips if alive, do NOT touch them
 for /f "tokens=5" %%A in ('netstat -ano 2^>nul ^| findstr ":18902" ^| findstr LISTENING') do (
   echo [cleanup] bridge 18902 occupied by PID %%A - killing
   taskkill /PID %%A /F >nul 2>nul
 )
 ping -n 3 127.0.0.1 >nul
 
-REM ---- 2. Launch keep_alive + video via vbs (silent, detached) ----
+REM ---- 2. Launch Rust supervisor via vbs (silent, detached) ----
 echo [start ] wscript autostart.vbs
 if not exist "%~dp0autostart.vbs" (
   echo [ERROR ] autostart.vbs not found next to this cmd
@@ -28,7 +28,7 @@ echo [wait  ] bridge 18902 ready
 set WAITED=0
 :wait_loop
 if %WAITED% geq 45 (
-  echo [WARN  ] bridge not up in 45s - check keep_alive.js console
+  echo [WARN  ] bridge not up in 45s - check rust\logs\supervisor-*.log
   goto :done
 )
 powershell -NoProfile -Command "try { Invoke-WebRequest -Uri 'http://127.0.0.1:18902/api/health' -TimeoutSec 2 -UseBasicParsing | Out-Null; exit 0 } catch { exit 1 }"

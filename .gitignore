@@ -14,3 +14,22 @@ qqbot/patch/whitelist.patch.yml
 video-server/.douyin-profile/
 video-server/state.json
 video-server/.debug-*
+
+# 依赖与字节码缓存：不入库（运行时由 install 脚本重新生成）
+node_modules/
+__pycache__/
+*.pyc
+
+# Rust 编译产物与运行日志
+rust/target/
+rust/logs/
+
+# 安装包生成物（保留同目录下的 .md / .cmd 模板源）
+安装包/*.exe
+
+# 已清理的废弃目录，防止再次入库
+素材_未使用/
+qa/
+
+# 全局日志
+*.log

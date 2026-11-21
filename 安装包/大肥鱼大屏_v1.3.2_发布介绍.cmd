@@ -42,7 +42,7 @@ echo   2. 双击桌面「大肥鱼智能大屏」启动主界面
 echo   3. 首次启用语音：打开「设置 - 语音」页签
 echo      · 选 Edge-TTS 引擎 → 点「试听」，约 1 秒出声
 echo      · 离线音色请先运行「完整流程.cmd」安装 ChatTTS 依赖
-echo   4. QQ 机器人：在 qqbot 目录运行 bridge.cmd 并按提示扫码登录
+echo   4. QQ 机器人：运行 autostart.vbs 启动守护进程，首次显示二维码扫码登录
 echo.
 echo   【服务与端口】
 echo   Gateway   127.0.0.1:18900   AI 模型网关
@@ -84,11 +84,11 @@ pause
 goto head
 
 :go
-if exist "%APP%\keep_alive.js" (
-  start "大肥鱼服务守护" cmd /c "node ""%APP%\keep_alive.js"" & pause"
-  echo 已在新窗口启动全部服务。
+if exist "%APP%\autostart.vbs" (
+  start "大肥鱼服务守护" wscript "%APP%\autostart.vbs"
+  echo 已后台启动守护进程，日志见 rust\logs\supervisor-*.log
 ) else (
-  echo [提示] 未找到 keep_alive.js，请使用「完整流程.cmd」操作。
+  echo [提示] 未找到 autostart.vbs，请使用「完整流程.cmd」操作。
 )
 timeout /t 3 >nul
 goto head

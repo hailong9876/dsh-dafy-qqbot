@@ -54,7 +54,8 @@ if (-not ($KeepStage -and (Test-Path $payload))) {
   $runtimeFiles = @(
     '大肥鱼大屏.exe',
     'index.html',
-    'keep_alive.js',
+    'autostart.vbs',
+    'native.ps1',
     'Microsoft.Web.WebView2.Core.dll',
     'Microsoft.Web.WebView2.WinForms.dll',
     'WebView2Loader.dll'
@@ -64,10 +65,33 @@ if (-not ($KeepStage -and (Test-Path $payload))) {
     if (-not (Test-Path $src)) { throw "缺少运行文件: $f" }
     Copy-Item $src (Join-Path $payload $f) -Force
   }
-  foreach ($dir in @('assets', 'mcp-server', 'pc-server')) {
+  foreach ($dir in @('assets', 'mcp-server')) {
     $src = Join-Path $proj $dir
     if (-not (Test-Path $src)) { throw "缺少目录: $dir" }
     Copy-Item $src (Join-Path $payload $dir) -Recurse -Force
+  }
+
+  # Rust 核心服务（supervisor / bridge / pc）：保持 rust\target\release 相对结构，
+  # 与 autostart.vbs 的查找路径一致；产物缺失时自动 cargo build --release
+  $rustRelease = Join-Path $proj 'rust\target\release'
+  $rustExes = @('dafy-supervisor.exe', 'dafy-bridge.exe', 'dafy-pc.exe')
+  $missing = $rustExes | Where-Object { -not (Test-Path (Join-Path $rustRelease $_)) }
+  if ($missing) {
+    $cargo = Get-Command cargo -ErrorAction SilentlyContinue
+    if (-not $cargo) { throw "缺少 Rust 产物且未找到 cargo：$($missing -join ', ')。请先在 rust\ 目录执行 cargo build --release" }
+    Write-Host "[编译] 缺少 $($missing -join ', ')，执行 cargo build --release" -ForegroundColor Cyan
+    Push-Location (Join-Path $proj 'rust')
+    & cargo build --release
+    $code = $LASTEXITCODE
+    Pop-Location
+    if ($code -ne 0) { throw "cargo build --release 失败（退出码 $code）" }
+  }
+  $rustDst = Join-Path $payload 'rust\target\release'
+  New-Item -ItemType Directory -Path $rustDst -Force | Out-Null
+  foreach ($e in $rustExes) {
+    $src = Join-Path $rustRelease $e
+    if (-not (Test-Path $src)) { throw "缺少 Rust 产物: $src" }
+    Copy-Item $src (Join-Path $rustDst $e) -Force
   }
 
   # 语音引擎（仅脚本 + 预置音色，不含模型/缓存/测试音频）
@@ -117,16 +141,13 @@ if (-not ($KeepStage -and (Test-Path $payload))) {
       'install-qqbot.cmd', 'install-qqbot.ps1',
       'start-qqbot.cmd', 'start-qqbot.ps1',
       'discover-openid.cmd',
-      'set-whitelist.cmd', 'set-whitelist.ps1',
-      'bridge.cmd', 'bridge.vbs'
+      'set-whitelist.cmd', 'set-whitelist.ps1'
     )
     foreach ($f in $qqFiles) {
       $src = Join-Path $qqSrc $f
       if (Test-Path $src) { Copy-Item $src (Join-Path $qqDst $f) -Force }
     }
-    # 本地控制服务（含 qrcode 依赖）
-    $bridgeSrc = Join-Path $qqSrc 'bridge'
-    if (Test-Path $bridgeSrc) { Copy-Item $bridgeSrc (Join-Path $qqDst 'bridge') -Recurse -Force }
+    # 本地控制服务已由 Rust 版 dafy-bridge（rust\target\release）提供，不再打包 Node 版 bridge
     # 本地插件（fish-tone / whale / nekowhale），排除源码与依赖
     $pluginsSrc = Join-Path $qqSrc 'plugins'
     if (Test-Path $pluginsSrc) {

@@ -1,6 +1,6 @@
-//! 大肥鱼守护进程（Rust 版 keep_alive.js）
+//! 大肥鱼守护进程（Rust 版，替代旧的 keep_alive.js）
 //!
-//! 行为对齐现有 Node 脚本：
+//! 行为对齐原 Node 守护脚本：
 //! - 先探测端口，缺哪个起哪个，不重复拉起；
 //! - bridge 起来后再等 TTS 预热（最长 90s）；
 //! - 每 30 秒巡检一次，掉线就重启；
@@ -362,7 +362,7 @@ fn build_services(root: &Path) -> Vec<Service> {
             bin: pc_bin,
             script: pc.join("server.js"),
             args: vec![],
-            cwd: pc,
+            cwd: root.to_path_buf(),
         },
         Service {
             name: "video",

@@ -131,9 +131,9 @@ where node >nul 2>nul || (
   goto menu
 )
 echo 正在启动…（首次 ChatTTS 模型加载约 40-60 秒）
-start "大肥鱼服务守护" cmd /c "node ""%APP%\keep_alive.js"" & pause"
+start "大肥鱼服务守护" wscript "%APP%\autostart.vbs"
 echo.
-echo 已在新窗口启动守护进程，请查看该窗口的状态输出。
+echo 已后台启动 Rust 守护进程，日志见 rust\logs\supervisor-*.log。
 timeout /t 5 >nul
 goto status
 

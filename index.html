@@ -2487,7 +2487,7 @@ async function qqbotPoll(){
   catch(e){
     qqbotRunning=false;
     qqbotToggle.textContent='▶ 启动机器人';
-    qqbotStatus('控制服务未启动：请双击 qqbot\\bridge.cmd（安装版会开机自启）',true);
+    qqbotStatus('控制服务未启动：请运行 autostart.vbs 启动守护进程（安装版会开机自启）',true);
     qqbotQrImg.classList.remove('show'); qqbotQrImg.removeAttribute('src');
     qqbotQrTip.textContent='控制服务未启动';
   }
@@ -4249,7 +4249,12 @@ async function vidStep(mode){
           const why=p.reason||'未知原因';
           vidItemStatus(item,(p.needLogin?'未登录 · 仅生成':'发布失败：'+why).slice(0,40),'err');
           vidLog('发布失败：'+why,true);
-          if(p.needLogin) vidStopAuto();
+          if(p.needLogin){ vidStopAuto(); return; }
+          // 限频 / 每日上限是硬限制，继续刷也没用，先停下
+          if(/发得太快|每日上限|今天已经发/.test(why)) return;
+          // 评论区打不开这类偶发失败：不卡在这条，直接刷下一条
+          vidLog('这条跳过，直接刷下一条');
+          continue;
         }
       }else{
         vidItemStatus(item,'仅生成（未发布）','');

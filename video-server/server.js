@@ -1488,6 +1488,8 @@ async function handle(req, res) {
       if (!lim.ok) return json(res, 200, { ok: false, reason: lim.reason });
 
       const p = await ensurePage();
+      // 评论只能发给正在播放的那条：先确保播放器在播（只恢复播放，不切换视频）
+      await withFallbackAfter(ensurePlaying(p), 3000, { ok: false });
       // 评论是给「快照里那条视频」写的；打开评论区前先确认页面还停在同一条
       if (expectKey && (await videoKey(p)) !== expectKey) {
         return json(res, 200, { ok: false, stale: true, reason: '视频已经切换，本条评论作废' });

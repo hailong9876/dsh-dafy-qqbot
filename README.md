@@ -29,7 +29,7 @@
 - **富媒体**：图片、视频自动下载并交给模型/插件分析
 - **人味插件**：发送前改写文本语气
 
-### 本地桥接（`qqbot/bridge/bridge.js`，端口 18902）
+### 本地桥接（Rust 版 `dafy-bridge`，端口 18902）
 
 大屏与机器人之间的控制层，提供：
 
@@ -62,15 +62,19 @@
 大肥鱼/
 ├─ index.html                 大屏前端（单文件，含全部面板逻辑）
 ├─ 大肥鱼大屏.exe             WebView2 桌面外壳
-├─ keep_alive.js              守护进程：保活 bridge / ChatTTS / Edge-TTS
+├─ autostart.vbs              开机/手动启动入口（拉起 Rust 守护进程）
+├─ 启动全部服务.cmd           一键启动并等待就绪
+├─ native.ps1                 电脑控制底层脚本（截屏/OCR/键鼠/窗口）
 ├─ assets/                    桌宠与界面素材
-├─ qa/                        开发过程截图与验收图（可删）
-├─ 素材_未使用/               未采用的素材（可删）
 ├─ installer/                 Inno Setup 打包脚本
-├─ 安装包/                    已构建的安装包
+├─ 安装包/                    安装包说明与使用模板
 ├─ third_party/python311/     内置 Python 运行时（TTS 用）
+├─ rust/                      Rust 核心服务源码
+│   ├─ crates/dafy-supervisor 守护进程：保活所有后台服务（替代旧 keep_alive.js）
+│   ├─ crates/dafy-bridge     本地控制服务（端口 18902，替代旧 qqbot/bridge）
+│   └─ crates/dafy-pc         电脑控制服务（端口 18907，替代旧 pc-server）
 ├─ mcp-server/                MCP 服务
-├─ video-server/              抖音视频服务
+├─ video-server/              抖音视频服务（端口 18905）
 ├─ tts/                       语音合成服务
 │   ├─ tts_server.py          ChatTTS（离线，端口 18903）
 │   └─ edge_tts_server.py     Edge-TTS（联网，端口 18904）
@@ -78,7 +82,6 @@
     ├─ config.json            机器人配置（API Key / 白名单 / 主动发言）
     ├─ config.template.json   配置模板
     ├─ start-qqbot.ps1        启动脚本（生成 patch 并拉起 dsh）
-    ├─ bridge/                本地控制服务（端口 18902）
     ├─ patch/                 运行时生成的配置补丁
     ├─ plugins/               自定义 dsh 插件
     └─ .dsh/                  dsh profile 与依赖（含登录凭据）
@@ -103,21 +106,21 @@
 
 ### 2. 启动后台服务
 
-```powershell
-node keep_alive.js
-```
+双击根目录的 `autostart.vbs`（静默后台启动），或运行 `启动全部服务.cmd`（带就绪等待与状态提示）。
 
-会依次检查并拉起：
+Rust 守护进程（`dafy-supervisor`）会依次检查并拉起：
 
-| 服务 | 端口 |
-|---|---|
-| 大屏文件服务（exe 内置） | 18901 |
-| QQ 机器人 bridge | 18902 |
-| ChatTTS | 18903 |
-| Edge-TTS | 18904 |
-| 本地模型网关（独立项目） | 18900 |
+| 服务 | 端口 | 实现 |
+|---|---|---|
+| 大屏文件服务（exe 内置） | 18901 | 大肥鱼大屏.exe |
+| QQ 机器人控制服务 | 18902 | dafy-bridge（Rust） |
+| ChatTTS | 18903 | Python |
+| Edge-TTS | 18904 | Python |
+| 抖音视频服务 | 18905 | Node（Playwright） |
+| 电脑控制服务 | 18907 | dafy-pc（Rust） |
+| 本地模型网关（独立项目） | 18900 | Node（sidecar） |
 
-启动后窗口可以关掉，子进程会继续运行；保持开着则每 30 秒自动保活。
+守护进程后台静默运行，日志在 `rust/logs/`；每 30 秒巡检，掉线自动重启。
 
 ### 3. 配置模型
 

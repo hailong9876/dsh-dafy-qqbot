@@ -5,7 +5,7 @@ Dim ROOT
 ROOT = fso.GetParentFolderName(WScript.ScriptFullName)
 sh.CurrentDirectory = ROOT
 
-' 优先使用 Rust 守护进程；二进制不存在时自动回退旧的 keep_alive.js（可随时回滚）
+' 启动 Rust 守护进程（优先 release，其次 debug）；它负责拉起 bridge / TTS / ofm / pc / video
 Dim SUP
 SUP = ROOT & "\rust\target\release\dafy-supervisor.exe"
 If Not fso.FileExists(SUP) Then SUP = ROOT & "\rust\target\debug\dafy-supervisor.exe"
@@ -14,18 +14,6 @@ If fso.FileExists(SUP) Then
   WScript.Quit 0
 End If
 
-Dim NODE
-If fso.FileExists("C:\Program Files\nodejs\node.exe") Then
-  NODE = "C:\Program Files\nodejs\node.exe"
-ElseIf fso.FileExists("D:\Program Files\nodejs\node.exe") Then
-  NODE = "D:\Program Files\nodejs\node.exe"
-ElseIf fso.FileExists(sh.ExpandEnvironmentStrings("%LOCALAPPDATA%\Programs\nodejs\node.exe")) Then
-  NODE = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%\Programs\nodejs\node.exe")
-Else
-  NODE = "node"
-End If
-
-sh.Run """" & NODE & """ """ & ROOT & "\keep_alive.js""", 0, False
-
-sh.CurrentDirectory = ROOT & "\video-server"
-sh.Run """" & NODE & """ """ & ROOT & "\video-server\server.js""", 0, False
+' 未找到守护进程二进制：提示用户
+MsgBox "未找到大肥鱼守护进程（rust\target\release\dafy-supervisor.exe）。" & vbCrLf & _
+       "请先在 rust 目录执行 cargo build --release，或重新运行安装包。", vbExclamation, "大肥鱼"

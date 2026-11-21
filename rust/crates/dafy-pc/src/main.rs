@@ -14,7 +14,7 @@
 //!   POST /api/open              打开目标 {target}
 //!   POST /api/key               按键 / 快捷键 {keys}
 //!
-//! 底层系统调用仍复用仓库里的 `pc-server/native.ps1`（截屏/OCR/键鼠/窗口），
+//! 底层系统调用仍复用仓库根目录的 `native.ps1`（截屏/OCR/键鼠/窗口），
 //! 这部分是 Windows UI Automation 封装，保持原样可确保行为零差异。
 
 use axum::body::{to_bytes, Body};
@@ -49,7 +49,7 @@ async fn main() {
         .unwrap_or(18907);
 
     let root = dafy_core::project_root();
-    let ps1 = root.join("pc-server").join("native.ps1");
+    let ps1 = root.join("native.ps1");
     if !ps1.is_file() {
         println!("[pc] 警告：找不到底层脚本 {}", ps1.display());
     }

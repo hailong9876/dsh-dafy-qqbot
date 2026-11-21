@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 /// 项目根目录（大肥鱼目录本身）。
 ///
 /// 优先用 `DAFY_ROOT` 环境变量；否则以当前可执行文件位置向上一级寻找
-/// 同时包含 `index.html` 与 `keep_alive.js` 的目录；再退回当前工作目录。
+/// 同时包含 `index.html` 与 `autostart.vbs` 的目录；再退回当前工作目录。
 pub fn project_root() -> PathBuf {
     if let Ok(v) = std::env::var("DAFY_ROOT") {
         let p = PathBuf::from(v);
@@ -37,5 +37,5 @@ pub fn project_root() -> PathBuf {
 }
 
 fn is_project_root(dir: &Path) -> bool {
-    dir.join("index.html").is_file() && dir.join("keep_alive.js").is_file()
+    dir.join("index.html").is_file() && dir.join("autostart.vbs").is_file()
 }

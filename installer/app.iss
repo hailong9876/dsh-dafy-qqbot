@@ -71,7 +71,7 @@ Name: "desktopicon"; Description: "创建桌面快捷方式(&D)"; GroupDescripti
 Name: "qqbotautostart"; Description: "开机自动启动 QQ 机器人控制服务"; GroupDescription: "QQ 机器人:"; Flags: checkedonce
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "DafeiYuQQBridge"; ValueData: """{app}\qqbot\bridge.vbs"""; Flags: uninsdeletevalue; Tasks: qqbotautostart
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "DafeiYuQQBridge"; ValueData: """{app}\autostart.vbs"""; Flags: uninsdeletevalue; Tasks: qqbotautostart
 
 [Files]
 Source: "payload\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -82,7 +82,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "立即启动 {#AppName}"; Flags: nowait postinstall skipifsilent
-Filename: "{app}\qqbot\bridge.cmd"; Description: "启动 QQ 机器人控制服务"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\autostart.vbs"; Description: "启动大肥鱼守护进程"; Flags: nowait postinstall skipifsilent
 
 [Code]
 { WebView2 运行时检测：缺失时提示但不阻止安装 }
