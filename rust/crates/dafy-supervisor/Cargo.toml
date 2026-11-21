@@ -1,0 +1,18 @@
+[package]
+name = "dafy-supervisor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+dafy-core = { path = "../dafy-core" }
+anyhow = "1"
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "time",
+    "net",
+    "signal",
+    "sync",
+    "io-util",
+] }
