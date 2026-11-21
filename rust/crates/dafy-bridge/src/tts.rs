@@ -65,6 +65,7 @@ pub async fn tts_status(app: &Arc<App>) -> Value {
     let running = probe(app, TTS_PORT, "/health", 2500).await;
     let pid = *app.tts_pid.lock().unwrap();
     json!({
+        "ok": true,
         "installed": tts_installed(app),
         "running": running,
         "port": TTS_PORT,
@@ -76,6 +77,7 @@ pub async fn edge_status(app: &Arc<App>) -> Value {
     let running = probe(app, EDGE_TTS_PORT, "/health", 2500).await;
     let pid = *app.edge_pid.lock().unwrap();
     json!({
+        "ok": true,
         "installed": edge_installed(app),
         "running": running,
         "port": EDGE_TTS_PORT,

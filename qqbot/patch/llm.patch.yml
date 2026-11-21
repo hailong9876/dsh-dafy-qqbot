@@ -11,4 +11,4 @@
 - id: agent-default-model
   config:
     provider: deepseek-official
-    model: mimo-v2.6-flash-free
+    model: kilo-auto/free

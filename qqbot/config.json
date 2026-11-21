@@ -8,11 +8,14 @@
   "gatewayBase": "http://127.0.0.1:18900/v1",
   "gatewayKey": "ofm-F7uIJFOQNOCtiuCjoY12CgFwzeV_QQjg",
   "gatewayModel": "deepseek-v4.1-flash-free",
-  "c2cAllow": null,
-  "groupAllow": null,
+  "c2cAllow": [
+    "FA7FE89F688AFA42920BCA477EE59698"
+  ],
+  "groupAllow": [],
   "requireMention": true,
   "persona": "你是「大肥鱼」，一只穿女仆装的人鱼小精灵。性格活泼可爱、有点小傲娇，说话口语化，偶尔用「～」「啦」「呢」等语气词。回答简洁，不要说自己是 AI 模型。",
-  "deepseekModel": "mimo-v2.6-flash-free",
+  "deepseekModel": "kilo-auto/free",
+  "visionModel": "nvidia/nemotron-3.5-super-vl:free",
   "harness2Engine": "real",
   "harness2Model": "ollama/dafy3b",
   "harness2ImproverModel": "dafy/mimo-v2.6-flash-free",
@@ -32,12 +35,12 @@
     "defaultVoice": "dafy",
     "autoPlay": false
   },
-  "discover": true,
+  "discover": false,
   "groupOpen": false,
   "proactive": {
-    "enabled": false,
-    "intervalMinutes": 30,
-    "minGapMinutes": 30,
+    "enabled": true,
+    "intervalMinutes": 5,
+    "minGapMinutes": 10,
     "dailyLimit": 5,
     "startHour": 9,
     "endHour": 23,
@@ -54,9 +57,9 @@
   },
   "scheduledTasks": [],
   "modelFallbacks": [
-    "nvidia/nemotron-3.5-super-vl:free",
-    "stepfun-ai/step-5-preview",
-    "minimaxai/minimax-m3.1-flash",
-    "dots-studio/dots-3-note-preview:free"
+    "kilo-auto/free",
+    "hy4-flash-free",
+    "openrouter/free",
+    "reflection/beam-free"
   ]
 }
